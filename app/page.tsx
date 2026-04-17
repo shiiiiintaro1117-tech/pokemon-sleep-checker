@@ -61,6 +61,7 @@ export default function Home() {
   const [image, setImage] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [selectedType, setSelectedType] = useState<PokemonType | null>(null);
+  const [manualName, setManualName] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export default function Home() {
     setFile(f);
     setResult(null);
     setError(null);
+    setManualName("");
     const reader = new FileReader();
     reader.onload = (e) => setImage(e.target?.result as string);
     reader.readAsDataURL(f);
@@ -164,6 +166,21 @@ export default function Home() {
           </div>
         </div>
 
+        {/* ニックネーム用手入力（任意） */}
+        <div className="glass-card rounded-2xl p-5 mb-4 animate-fadeInUp" style={{ animationDelay: "0.25s" }}>
+          <p className="text-xs text-blue-300 font-bold uppercase tracking-widest mb-3">
+            ポケモン名（任意）
+            <span className="ml-2 text-slate-500 normal-case font-normal">ニックネームをつけている場合に入力</span>
+          </p>
+          <input
+            type="text"
+            value={manualName}
+            onChange={(e) => setManualName(e.target.value)}
+            placeholder="例：サーナイト"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-blue-400/50 transition"
+          />
+        </div>
+
         {/* 広告スペース */}
         <div className="glass-card rounded-xl p-3 text-center text-slate-600 text-xs mb-4 border border-white/5">
           広告スペース
@@ -199,7 +216,9 @@ export default function Home() {
 
             {/* スコア */}
             <div className="text-center mb-6">
-              <p className="text-slate-400 text-xs mb-2 tracking-widest uppercase">{result.pokemonName} / {result.type}タイプ</p>
+              <p className="text-slate-400 text-xs mb-2 tracking-widest uppercase">
+                {manualName || result.pokemonName || "ニックネームあり"} / {result.type}タイプ
+              </p>
               <div className={`text-7xl font-black mb-2 animate-scoreCount bg-gradient-to-b ${gradeConfig.bg} bg-clip-text text-transparent`}>
                 {result.scores.total}
               </div>

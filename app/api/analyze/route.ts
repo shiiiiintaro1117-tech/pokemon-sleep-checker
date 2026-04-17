@@ -177,7 +177,6 @@ export async function POST(req: NextRequest) {
   const { pokemonName, nature, subskills } = parsed;
 
   const missing: string[] = [];
-  if (!pokemonName) missing.push("ポケモン名");
   if (!nature) missing.push("性格");
   if (!subskills || subskills.length === 0) missing.push("サブスキル");
   if (missing.length > 0) {

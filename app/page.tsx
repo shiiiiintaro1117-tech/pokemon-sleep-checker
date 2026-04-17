@@ -10,8 +10,7 @@ type Result = {
   type: string;
   nature: string;
   subskills: string[];
-  ingredients: string[];
-  scores: { nature: number; subskill: number; ingredient: number; total: number };
+  scores: { nature: number; subskill: number; total: number };
   grade: { label: string; color: string; emoji: string };
   comment: string;
 };
@@ -211,9 +210,8 @@ export default function Home() {
 
             {/* スコア内訳 */}
             <div className="space-y-4 mb-5">
-              <ScoreBar label="性格" value={result.scores.nature} max={20} detail={result.nature} color="from-pink-500 to-rose-400" />
-              <ScoreBar label="サブスキル" value={result.scores.subskill} max={60} detail={result.subskills.join(" / ")} color="from-blue-500 to-cyan-400" />
-              <ScoreBar label="食材" value={result.scores.ingredient} max={20} detail={result.ingredients.join(" / ") || "未取得"} color="from-amber-500 to-yellow-400" />
+              <ScoreBar label="性格" value={result.scores.nature} max={25} detail={result.nature} color="from-pink-500 to-rose-400" />
+              <ScoreBar label="サブスキル" value={result.scores.subskill} max={75} detail={result.subskills.join(" / ")} color="from-blue-500 to-cyan-400" />
             </div>
 
             {/* コメント */}
@@ -242,7 +240,7 @@ export default function Home() {
             <span>📊</span> 採点基準について
           </h2>
           <p className="text-slate-400 leading-relaxed text-xs">
-            各種攻略情報をもとに、性格（20点）・サブスキル（60点）・食材（20点）の合計100点で評価。タイプに合った性格・サブスキルを持つほど高得点になります。
+            各種攻略情報をもとに、性格（25点）・サブスキル（75点）の合計100点で評価。食材は読み取り精度の観点から評価対象外としています。タイプに合った性格・サブスキルを持つほど高得点になります。
           </p>
         </div>
 

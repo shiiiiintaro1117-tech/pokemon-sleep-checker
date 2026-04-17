@@ -5,117 +5,74 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const SUBSKILL_SCORES: Record<string, Record<string, number>> = {
   きのみ: {
-    "きのみの数S": 12,
-    "おてつだいスピードM": 10,
-    おてつだいボーナス: 10,
-    "きのみの数M": 7,
-    "おてつだいスピードS": 7,
-    最大所持数アップ: 4,
-    "スキル確率アップS": 3,
-    "スキル確率アップM": 3,
+    "きのみの数S": 15,
+    "おてつだいスピードM": 12,
+    おてつだいボーナス: 12,
+    "きのみの数M": 9,
+    "おてつだいスピードS": 9,
+    おてつだいサポートM: 7,
+    最大所持数アップ: 5,
+    おてつだいサポートS: 5,
+    "スキル確率アップS": 4,
+    "スキル確率アップM": 4,
     "食材確率アップS": 2,
     "食材確率アップM": 2,
     げんきチャージS: 3,
     げんきチャージM: 2,
-    おてつだいサポートS: 4,
-    おてつだいサポートM: 6,
   },
   食材: {
-    "食材確率アップM": 12,
-    "食材確率アップS": 10,
-    おてつだいボーナス: 10,
-    最大所持数アップ: 8,
-    "おてつだいスピードM": 7,
-    "おてつだいスピードS": 5,
+    "食材確率アップM": 15,
+    "食材確率アップS": 12,
+    おてつだいボーナス: 12,
+    最大所持数アップ: 10,
+    "おてつだいスピードM": 9,
+    おてつだいサポートM: 7,
+    "おてつだいスピードS": 6,
+    おてつだいサポートS: 5,
+    "スキル確率アップS": 4,
+    "スキル確率アップM": 4,
     "きのみの数S": 3,
     "きのみの数M": 2,
-    "スキル確率アップS": 3,
-    "スキル確率アップM": 3,
     げんきチャージS: 3,
     げんきチャージM: 2,
-    おてつだいサポートS: 4,
-    おてつだいサポートM: 6,
   },
   スキル: {
-    "スキル確率アップM": 12,
-    "スキル確率アップS": 10,
-    おてつだいボーナス: 10,
-    "おてつだいスピードM": 7,
-    "おてつだいスピードS": 5,
+    "スキル確率アップM": 15,
+    "スキル確率アップS": 12,
+    おてつだいボーナス: 12,
+    "おてつだいスピードM": 9,
+    おてつだいサポートM: 7,
+    "おてつだいスピードS": 6,
+    おてつだいサポートS: 5,
+    最大所持数アップ: 4,
+    "食材確率アップS": 4,
+    "食材確率アップM": 4,
     "きのみの数S": 3,
     "きのみの数M": 2,
-    "食材確率アップS": 3,
-    "食材確率アップM": 3,
-    最大所持数アップ: 4,
     げんきチャージS: 3,
     げんきチャージM: 2,
-    おてつだいサポートS: 4,
-    おてつだいサポートM: 6,
   },
 };
 
 const NATURE_SCORES: Record<string, Record<string, number>> = {
   きのみ: {
-    いじっぱり: 20,
-    ゆうかん: 16,
-    さみしがり: 16,
-    やんちゃ: 16,
-    ようき: 12,
-    せっかち: 12,
-    むじゃき: 12,
-    てれや: 8,
-    がんばりや: 8,
-    すなお: 8,
-    きまぐれ: 8,
-    まじめ: 8,
+    いじっぱり: 25,
+    ゆうかん: 20, さみしがり: 20, やんちゃ: 20,
+    ようき: 15, せっかち: 15, むじゃき: 15,
+    てれや: 8, がんばりや: 8, すなお: 8, きまぐれ: 8, まじめ: 8,
   },
   食材: {
-    れいせい: 20,
-    うっかりや: 20,
-    おっとり: 16,
-    ゆうかん: 16,
-    やんちゃ: 16,
-    さみしがり: 16,
-    せっかち: 12,
-    むじゃき: 12,
-    てれや: 8,
-    がんばりや: 8,
-    すなお: 8,
-    きまぐれ: 8,
-    まじめ: 8,
+    れいせい: 25, うっかりや: 25,
+    おっとり: 20, ゆうかん: 20, やんちゃ: 20, さみしがり: 20,
+    せっかち: 15, むじゃき: 15,
+    てれや: 8, がんばりや: 8, すなお: 8, きまぐれ: 8, まじめ: 8,
   },
   スキル: {
-    なまいき: 20,
-    しんちょう: 20,
-    おとなしい: 16,
-    いじっぱり: 16,
-    ゆうかん: 16,
-    さみしがり: 12,
-    ようき: 12,
-    てれや: 8,
-    がんばりや: 8,
-    すなお: 8,
-    きまぐれ: 8,
-    まじめ: 8,
+    なまいき: 25, しんちょう: 25,
+    おとなしい: 20, いじっぱり: 20, ゆうかん: 20,
+    さみしがり: 15, ようき: 15,
+    てれや: 8, がんばりや: 8, すなお: 8, きまぐれ: 8, まじめ: 8,
   },
-};
-
-const INGREDIENT_SCORES: Record<string, number> = {
-  ふといながねぎ: 20,
-  あじわいキノコ: 20,
-  げきからハーブ: 18,
-  リラックスカカオ: 18,
-  あまいミツ: 15,
-  やわらかいもの: 15,
-  もりのきのこ: 12,
-  ほっこりポテト: 12,
-  あんみんトマト: 12,
-  ピュアなオイル: 10,
-  あったかジンジャー: 10,
-  マメミート: 10,
-  おいしいしっぽ: 8,
-  ワリバシ: 6,
-  もとよりのエキス: 6,
 };
 
 const IDEAL_NATURE: Record<string, { best: string[]; good: string[] }> = {
@@ -130,13 +87,12 @@ const IDEAL_SUBSKILLS: Record<string, string[]> = {
   スキル: ["スキル確率アップM", "おてつだいボーナス", "スキル確率アップS", "おてつだいスピードM", "おてつだいスピードS"],
 };
 
-function buildComment({ type, nature, natureScore, subskills, cappedSubskill, finalScore }: {
-  type: string; nature: string; natureScore: number; subskills: string[];
-  subskillMap: Record<string, number>; cappedSubskill: number; finalScore: number;
+function buildComment({ type, nature, subskills, finalScore }: {
+  type: string; nature: string; subskills: string[];
+  finalScore: number;
 }): string {
   const ideal = IDEAL_NATURE[type] ?? { best: [], good: [] };
   const idealSubs = IDEAL_SUBSKILLS[type] ?? [];
-
   const isNatureBest = ideal.best.includes(nature);
   const isNatureGood = ideal.good.includes(nature);
   const missingIdealSubs = idealSubs.filter((s) => !subskills.includes(s)).slice(0, 2);
@@ -159,15 +115,9 @@ function buildComment({ type, nature, natureScore, subskills, cappedSubskill, fi
   const targetNature = ideal.best.join("・");
   const targetSubs = idealSubs.slice(0, 3).join("・");
 
-  if (finalScore >= 80) {
-    return `${naturePart}${subPart}性格・サブスキルともに理想に近い最強個体です！`;
-  }
-  if (finalScore >= 60) {
-    return `${naturePart}${subPart}${missingSubs}さらに厳選するなら性格「${targetNature}」＋「${targetSubs}」を目指しましょう。`;
-  }
-  if (finalScore >= 40) {
-    return `${naturePart}${subPart}${missingSubs}理想個体は性格「${targetNature}」＋サブスキルに「${targetSubs}」の組み合わせです。`;
-  }
+  if (finalScore >= 80) return `${naturePart}${subPart}性格・サブスキルともに理想に近い最強個体です！`;
+  if (finalScore >= 60) return `${naturePart}${subPart}${missingSubs}さらに厳選するなら性格「${targetNature}」＋「${targetSubs}」を目指しましょう。`;
+  if (finalScore >= 40) return `${naturePart}${subPart}${missingSubs}理想個体は性格「${targetNature}」＋サブスキルに「${targetSubs}」の組み合わせです。`;
   return `${naturePart}${subPart}この${type}タイプの理想個体は、性格「${targetNature}」＋サブスキルに「${targetSubs}」を持つ個体です。厳選を続けましょう！`;
 }
 
@@ -194,17 +144,15 @@ export async function POST(req: NextRequest) {
 {
   "pokemonName": "ポケモン名",
   "nature": "性格名",
-  "subskills": ["サブスキル1", "サブスキル2", "サブスキル3", "サブスキル4", "サブスキル5"],
-  "ingredients": ["食材1", "食材2"]
+  "subskills": ["サブスキル1", "サブスキル2", "サブスキル3", "サブスキル4", "サブスキル5"]
 }
 
 ※サブスキルは取得済みのもののみ（未取得は含めない）
-※食材はLv30・Lv60のもの（取得済みのみ）
 ※読み取れない項目はnullにする`;
 
   const message = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 512,
+    max_tokens: 256,
     messages: [
       {
         role: "user",
@@ -226,7 +174,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "読み取りに失敗しました。別の画像をお試しください。" }, { status: 422 });
   }
 
-  const { pokemonName, nature, subskills, ingredients } = parsed;
+  const { pokemonName, nature, subskills } = parsed;
 
   const missing: string[] = [];
   if (!pokemonName) missing.push("ポケモン名");
@@ -244,29 +192,18 @@ export async function POST(req: NextRequest) {
 
   const natureScore = natureMap[nature] ?? 0;
   const subskillScore = (subskills ?? []).reduce((sum: number, s: string) => sum + (subskillMap[s] ?? 2), 0);
-  const ingredientScore = (ingredients ?? []).reduce((sum: number, i: string) => sum + (INGREDIENT_SCORES[i] ?? 5), 0);
-
-  const cappedSubskill = Math.min(subskillScore, 60);
-  const cappedIngredient = Math.min(ingredientScore, 20);
-  const total = natureScore + cappedSubskill + cappedIngredient;
-  const finalScore = Math.min(total, 100);
+  const cappedSubskill = Math.min(subskillScore, 75);
+  const finalScore = Math.min(natureScore + cappedSubskill, 100);
 
   const grade = getGrade(finalScore);
-
-  const comment = buildComment({ type, nature, natureScore, subskills: subskills ?? [], subskillMap, cappedSubskill, finalScore });
+  const comment = buildComment({ type, nature, subskills: subskills ?? [], finalScore });
 
   return NextResponse.json({
     pokemonName,
     type,
     nature,
     subskills: subskills ?? [],
-    ingredients: ingredients ?? [],
-    scores: {
-      nature: natureScore,
-      subskill: cappedSubskill,
-      ingredient: cappedIngredient,
-      total: finalScore,
-    },
+    scores: { nature: natureScore, subskill: cappedSubskill, total: finalScore },
     grade,
     comment,
   });

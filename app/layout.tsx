@@ -22,6 +22,9 @@ export const metadata: Metadata = {
     description: "スクショを貼るだけで個体を自動採点！",
     type: "website",
   },
+  other: {
+    "google-adsense-account": "ca-pub-2988824672029852",
+  },
 };
 
 export const viewport = {
@@ -39,15 +42,15 @@ export default function RootLayout({
       lang="ja"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
+      <body className="min-h-full flex flex-col">
+        {children}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2988824672029852"
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
-      </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      </body>
     </html>
   );
 }

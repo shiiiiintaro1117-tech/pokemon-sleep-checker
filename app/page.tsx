@@ -216,7 +216,7 @@ export default function Home() {
 
         {/* アフィリエイトバナー */}
         <div className="flex justify-center mb-4 overflow-hidden rounded-xl">
-          <AffiliateBanner />
+          <AffiliateBanner id={1} />
         </div>
 
         {/* 採点ボタン */}
@@ -326,7 +326,7 @@ export default function Home() {
         {/* アフィリエイトバナー（結果後） */}
         {result && (
           <div className="flex justify-center mb-4 overflow-hidden rounded-xl">
-            <AffiliateBanner />
+            <AffiliateBanner id={2} />
           </div>
         )}
 
@@ -353,8 +353,8 @@ export default function Home() {
   );
 }
 
-function AffiliateBanner() {
-  return (
+function AffiliateBanner({ id }: { id: 1 | 2 }) {
+  if (id === 1) return (
     <div>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <a href="https://px.a8.net/svt/ejp?a8mat=4B1O1T+7USX4I+53VQ+62ENL" rel="nofollow" target="_blank">
@@ -363,6 +363,17 @@ function AffiliateBanner() {
       </a>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img style={{ border: 0 }} width={1} height={1} src="https://www19.a8.net/0.gif?a8mat=4B1O1T+7USX4I+53VQ+62ENL" alt="" />
+    </div>
+  );
+  return (
+    <div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <a href="https://px.a8.net/svt/ejp?a8mat=4B1O1T+AHGV2Y+3QJC+669JL" rel="nofollow" target="_blank">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img style={{ border: 0 }} width={468} height={60} alt="" src="https://www25.a8.net/svt/bgt?aid=260418305634&wid=002&eno=01&mid=s00000017436001037000&mc=1" />
+      </a>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img style={{ border: 0 }} width={1} height={1} src="https://www14.a8.net/0.gif?a8mat=4B1O1T+AHGV2Y+3QJC+669JL" alt="" />
     </div>
   );
 }

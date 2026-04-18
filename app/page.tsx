@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 type PokemonType = "きのみ" | "食材" | "スキル";
 
@@ -65,16 +66,36 @@ export default function Home() {
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<"good" | "bad" | null>(null);
 
   const handleFile = useCallback((f: File) => {
     setFile(f);
     setResult(null);
     setError(null);
     setManualName("");
+    setFeedback(null);
     const reader = new FileReader();
     reader.onload = (e) => setImage(e.target?.result as string);
     reader.readAsDataURL(f);
   }, []);
+
+  const sendFeedback = async (reaction: "good" | "bad") => {
+    if (!result || feedback) return;
+    setFeedback(reaction);
+    await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: result.type, nature: result.nature,
+        subskills: result.subskills, score: result.scores.total,
+        grade: result.grade.label, reaction,
+      }),
+    });
+  };
+
+  const shareText = result
+    ? `【ポケスリ個体値チェッカー】\n${manualName || result.pokemonName || "ポケモン"}（${result.type}タイプ）\nスコア：${result.scores.total}点 ${result.grade.emoji}${result.grade.label}\nhttps://pokemon-sleep-checker.vercel.app`
+    : "";
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -143,9 +164,14 @@ export default function Home() {
 
         {/* ステップ2：スクショ */}
         <div className="glass-card rounded-2xl p-5 mb-4 animate-fadeInUp" style={{ animationDelay: "0.2s" }}>
-          <p className="text-xs text-blue-300 font-bold uppercase tracking-widest mb-3">
-            Step 2 — スクリーンショットをアップロード
-          </p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-blue-300 font-bold uppercase tracking-widest">
+              Step 2 — スクリーンショットをアップロード
+            </p>
+            <Link href="/help" className="text-xs text-slate-400 hover:text-blue-300 underline transition">
+              撮り方がわからない？
+            </Link>
+          </div>
           <div
             onDrop={handleDrop}
             onDragOver={(e) => e.preventDefault()}
@@ -240,6 +266,43 @@ export default function Home() {
               </div>
             )}
 
+            {/* フィードバック */}
+            <div className="bg-white/5 rounded-xl p-4 mb-4 text-center">
+              {feedback ? (
+                <p className="text-green-400 text-sm font-bold">
+                  {feedback === "good" ? "👍 フィードバックありがとうございます！" : "👎 ご意見ありがとうございます！改善に役立てます。"}
+                </p>
+              ) : (
+                <>
+                  <p className="text-slate-400 text-xs mb-3">この採点は正確でしたか？</p>
+                  <div className="flex gap-3 justify-center">
+                    <button onClick={() => sendFeedback("good")}
+                      className="flex items-center gap-2 px-5 py-2 rounded-xl bg-green-500/20 border border-green-500/40 text-green-300 text-sm hover:bg-green-500/30 transition">
+                      👍 正確だった
+                    </button>
+                    <button onClick={() => sendFeedback("bad")}
+                      className="flex items-center gap-2 px-5 py-2 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-sm hover:bg-red-500/30 transition">
+                      👎 おかしかった
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* シェアボタン */}
+            <div className="flex gap-2 mb-4">
+              <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
+                target="_blank" rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-black border border-white/20 text-white text-sm font-bold hover:bg-white/10 transition">
+                𝕏 でシェア
+              </a>
+              <a href={`https://bsky.app/intent/compose?text=${encodeURIComponent(shareText)}`}
+                target="_blank" rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-sky-600/30 border border-sky-400/40 text-sky-300 text-sm font-bold hover:bg-sky-600/40 transition">
+                🦋 Blueskyでシェア
+              </a>
+            </div>
+
             {/* グレードガイド */}
             <div className="grid grid-cols-2 gap-2">
               {Object.entries(GRADE_CONFIG).map(([label, cfg]) => (
@@ -263,10 +326,13 @@ export default function Home() {
           </p>
         </div>
 
-        <footer className="text-center text-slate-600 text-xs mt-8 space-y-1">
+        <footer className="text-center text-slate-600 text-xs mt-8 space-y-2">
+          <div className="flex justify-center gap-4">
+            <Link href="/help" className="text-blue-400 hover:text-blue-300 underline">📱 スクショの撮り方</Link>
+            <Link href="/privacy" className="text-slate-500 hover:text-slate-400 underline">プライバシーポリシー</Link>
+          </div>
           <p>© 2025 ポケスリ個体値チェッカー</p>
           <p>※非公式ファンサイトです。株式会社ポケモン・任天堂とは無関係です。</p>
-          <a href="/privacy" className="text-slate-500 hover:text-slate-400 underline">プライバシーポリシー</a>
         </footer>
       </div>
     </main>

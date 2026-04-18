@@ -1,0 +1,14 @@
+{
+  "name": "bluesky-autolike",
+  "version": "1.0.0",
+  "description": "Bluesky auto-like bot for #ポケスリ posts",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@atproto/api": "^0.13.0",
+    "dotenv": "^16.4.5"
+  }
+}

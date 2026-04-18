@@ -214,9 +214,9 @@ export default function Home() {
           />
         </div>
 
-        {/* 広告スペース */}
-        <div className="glass-card rounded-xl p-3 text-center text-slate-600 text-xs mb-4 border border-white/5">
-          広告スペース
+        {/* アフィリエイトバナー */}
+        <div className="flex justify-center mb-4 overflow-hidden rounded-xl">
+          <AffiliateBanner />
         </div>
 
         {/* 採点ボタン */}
@@ -323,6 +323,13 @@ export default function Home() {
           </div>
         )}
 
+        {/* アフィリエイトバナー（結果後） */}
+        {result && (
+          <div className="flex justify-center mb-4 overflow-hidden rounded-xl">
+            <AffiliateBanner />
+          </div>
+        )}
+
         {/* 採点基準 */}
         <div className="glass-card rounded-2xl p-5 text-sm animate-fadeInUp" style={{ animationDelay: "0.3s" }}>
           <h2 className="font-bold text-blue-300 mb-2 flex items-center gap-2">
@@ -343,6 +350,20 @@ export default function Home() {
         </footer>
       </div>
     </main>
+  );
+}
+
+function AffiliateBanner() {
+  return (
+    <div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <a href="https://px.a8.net/svt/ejp?a8mat=4B1O1T+7USX4I+53VQ+62ENL" rel="nofollow" target="_blank">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img style={{ border: 0 }} width={468} height={60} alt="" src="https://www29.a8.net/svt/bgt?aid=260418305475&wid=001&eno=01&mid=s00000023831001019000&mc=1" />
+      </a>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img style={{ border: 0 }} width={1} height={1} src="https://www19.a8.net/0.gif?a8mat=4B1O1T+7USX4I+53VQ+62ENL" alt="" />
+    </div>
   );
 }
 

@@ -139,6 +139,18 @@ export default function Home() {
           <p className="text-blue-300 text-sm">スクショを貼るだけで個体を自動採点！</p>
         </div>
 
+        {/* ヘルプバナー */}
+        <Link href="/help" className="flex items-center justify-between glass-card rounded-2xl px-5 py-4 mb-4 border border-blue-400/20 hover:border-blue-400/50 hover:bg-blue-500/10 transition-all duration-300 animate-fadeInUp group" style={{ animationDelay: "0.05s" }}>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📱</span>
+            <div>
+              <p className="text-sm font-bold text-white">スクショの撮り方がわからない？</p>
+              <p className="text-xs text-slate-400">どの画面を撮ればいいか解説しています</p>
+            </div>
+          </div>
+          <span className="text-blue-400 text-lg group-hover:translate-x-1 transition-transform">→</span>
+        </Link>
+
         {/* ステップ1：タイプ選択 */}
         <div className="glass-card rounded-2xl p-5 mb-4 animate-fadeInUp" style={{ animationDelay: "0.1s" }}>
           <p className="text-xs text-blue-300 font-bold uppercase tracking-widest mb-3">
@@ -164,14 +176,9 @@ export default function Home() {
 
         {/* ステップ2：スクショ */}
         <div className="glass-card rounded-2xl p-5 mb-4 animate-fadeInUp" style={{ animationDelay: "0.2s" }}>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-blue-300 font-bold uppercase tracking-widest">
-              Step 2 — スクリーンショットをアップロード
-            </p>
-            <Link href="/help" className="text-xs text-slate-400 hover:text-blue-300 underline transition">
-              撮り方がわからない？
-            </Link>
-          </div>
+          <p className="text-xs text-blue-300 font-bold uppercase tracking-widest mb-3">
+            Step 2 — スクリーンショットをアップロード
+          </p>
           <div
             onDrop={handleDrop}
             onDragOver={(e) => e.preventDefault()}

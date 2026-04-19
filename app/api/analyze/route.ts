@@ -228,20 +228,25 @@ export async function POST(req: NextRequest) {
   const base64 = Buffer.from(bytes).toString("base64");
   const mediaType = file.type as "image/jpeg" | "image/png" | "image/webp";
 
-  const prompt = `このポケモンスリープのスクリーンショットから以下の情報を正確に読み取り、必ずJSON形式のみで返してください。他のテキストは一切含めないでください。
+  const prompt = `このポケモンスリープのスクリーンショットから情報を読み取り、必ずJSON形式のみで返してください。説明文は不要です。
 
 {
   "pokemonName": "ポケモン名",
   "nature": "性格名",
   "subskills": [
-    {"name": "サブスキル名", "color": "金 または 青 または 白"},
-    {"name": "サブスキル名", "color": "金 または 青 または 白"}
+    {"name": "サブスキル名", "color": "金"},
+    {"name": "サブスキル名", "color": "青"},
+    {"name": "サブスキル名", "color": "白"},
+    {"name": "サブスキル名", "color": "金"},
+    {"name": "サブスキル名", "color": "青"}
   ]
 }
 
-※サブスキルの背景色を必ず読み取ること（金＝黄金色、青＝水色、白＝グレー白）
-※取得済みのサブスキルのみ含める（未取得はスキップ）
-※読み取れない項目はnullにする`;
+【サブスキルについて】
+- 画面に表示されている取得済みサブスキルを全て（最大5個）漏れなく読み取ること
+- 各スロットの背景色を必ず判定すること：金＝黄金色の背景、青＝水色の背景、白＝グレー/白の背景
+- 未取得（鍵マークや空欄）のスロットは含めない
+- 取得済みが3個なら3個、5個なら5個、全て含める`;
 
   async function callOCR() {
     const msg = await client.messages.create({

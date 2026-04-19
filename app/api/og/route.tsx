@@ -19,14 +19,17 @@ const GRADE_EMOJIS: Record<string, string> = {
 
 async function loadFont(text: string): Promise<ArrayBuffer | null> {
   try {
+    // IE UA → woff形式で返ってくる（Satoriはwoff2非対応）
     const css = await fetch(
       `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700&text=${encodeURIComponent(text)}`,
-      { headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" } }
+      { headers: { "User-Agent": "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)" } }
     ).then((r) => r.text());
 
-    const match = css.match(/url\((https:\/\/fonts\.gstatic\.com[^)]+)\)/);
+    const match = css.match(/url\((https?:\/\/[^)]+)\)/);
     if (!match) return null;
-    return fetch(match[1]).then((r) => r.arrayBuffer());
+    const res = await fetch(match[1]);
+    if (!res.ok) return null;
+    return res.arrayBuffer();
   } catch {
     return null;
   }

@@ -108,6 +108,53 @@ const NATURE_SCORES: Record<string, Record<string, number>> = {
   },
 };
 
+// サブスキルごとの正しい背景色（固定値）
+const SUBSKILL_COLOR_MAP: Record<string, "金" | "青" | "白"> = {
+  // 金スキル
+  "きのみの数S": "金",
+  おてつだいボーナス: "金",
+  "スキルレベルアップM": "金",
+  睡眠EXPボーナス: "金",
+  げんき回復ボーナス: "金",
+  ゆめのかけら: "金",
+  // 青スキル
+  "スキル確率アップM": "青",
+  "食材確率アップM": "青",
+  "おてつだいスピードM": "青",
+  "スキルレベルアップS": "青",
+  げんきチャージM: "青",
+  おてつだいサポートM: "青",
+  // 白スキル
+  "スキル確率アップS": "白",
+  "食材確率アップS": "白",
+  "おてつだいスピードS": "白",
+  げんきチャージS: "白",
+  おてつだいサポートS: "白",
+  "最大所持数アップ": "白",
+  リサーチEXPボーナス: "白",
+};
+
+function validateSubskills(raw: { name: string; color: string }[]): { valid: string[]; corrected: string[] } {
+  const valid: string[] = [];
+  const corrected: string[] = [];
+  for (const item of raw) {
+    if (!item?.name) continue;
+    const expectedColor = SUBSKILL_COLOR_MAP[item.name];
+    if (!expectedColor) {
+      // 名前が不明なサブスキルはスキップ（誤読の可能性が高い）
+      corrected.push(item.name);
+      continue;
+    }
+    if (item.color && item.color !== expectedColor) {
+      // 色が一致しない → 誤読と判断して除外
+      corrected.push(item.name);
+      continue;
+    }
+    valid.push(item.name);
+  }
+  return { valid, corrected };
+}
+
 const IDEAL_NATURE: Record<string, { best: string[]; good: string[] }> = {
   きのみ: { best: ["いじっぱり", "やんちゃ"], good: ["ゆうかん", "さみしがり"] },
   食材: { best: ["れいせい", "うっかりや"], good: ["ひかえめ", "おっとり", "ゆうかん", "やんちゃ", "さみしがり"] },
@@ -177,10 +224,14 @@ export async function POST(req: NextRequest) {
 {
   "pokemonName": "ポケモン名",
   "nature": "性格名",
-  "subskills": ["サブスキル1", "サブスキル2", "サブスキル3", "サブスキル4", "サブスキル5"]
+  "subskills": [
+    {"name": "サブスキル名", "color": "金 または 青 または 白"},
+    {"name": "サブスキル名", "color": "金 または 青 または 白"}
+  ]
 }
 
-※サブスキルは取得済みのもののみ（未取得は含めない）
+※サブスキルの背景色を必ず読み取ること（金＝黄金色、青＝水色、白＝グレー白）
+※取得済みのサブスキルのみ含める（未取得はスキップ）
 ※読み取れない項目はnullにする`;
 
   const message = await client.messages.create({
@@ -207,11 +258,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "読み取りに失敗しました。別の画像をお試しください。" }, { status: 422 });
   }
 
-  const { pokemonName, nature, subskills } = parsed;
+  const { pokemonName, nature, subskills: rawSubskills } = parsed;
 
   const missing: string[] = [];
   if (!nature) missing.push("性格");
-  if (!subskills || subskills.length === 0) missing.push("サブスキル");
+  if (!rawSubskills || rawSubskills.length === 0) missing.push("サブスキル");
   if (missing.length > 0) {
     return NextResponse.json(
       { error: `画像から「${missing.join("・")}」が読み取れませんでした。\nサブスキルと性格が両方映っているポケモンの詳細画面のスクショをお使いください。` },
@@ -219,22 +270,29 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // 色と名前の整合性チェックで誤読を除外
+  const isStructured = rawSubskills.length > 0 && typeof rawSubskills[0] === "object";
+  const { valid: subskills, corrected } = isStructured
+    ? validateSubskills(rawSubskills as { name: string; color: string }[])
+    : { valid: rawSubskills as string[], corrected: [] };
+
   const subskillMap = SUBSKILL_SCORES[type] ?? {};
   const natureMap = NATURE_SCORES[type] ?? {};
 
   const natureScore = natureMap[nature] ?? 0;
-  const subskillScore = (subskills ?? []).reduce((sum: number, s: string) => sum + (subskillMap[s] ?? 2), 0);
+  const subskillScore = subskills.reduce((sum: number, s: string) => sum + (subskillMap[s] ?? 2), 0);
   const cappedSubskill = Math.min(subskillScore, 75);
   const finalScore = Math.min(natureScore + cappedSubskill, 100);
 
   const grade = getGrade(finalScore);
-  const comment = buildComment({ type, nature, subskills: subskills ?? [], finalScore });
+  const comment = buildComment({ type, nature, subskills, finalScore });
 
   return NextResponse.json({
     pokemonName,
     type,
     nature,
-    subskills: subskills ?? [],
+    subskills,
+    corrected,
     scores: { nature: natureScore, subskill: cappedSubskill, total: finalScore },
     grade,
     comment,

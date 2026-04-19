@@ -11,6 +11,7 @@ type Result = {
   type: string;
   nature: string;
   subskills: string[];
+  corrected: string[];
   scores: { nature: number; subskill: number; total: number };
   grade: { label: string; color: string; emoji: string };
   comment: string;
@@ -267,6 +268,12 @@ export default function Home() {
             </div>
 
             {/* コメント */}
+            {result.corrected?.length > 0 && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 text-xs text-yellow-200 mb-4">
+                ⚠️ 色と名前が一致しないため除外したサブスキル：{result.corrected.join("・")}
+              </div>
+            )}
+
             {result.comment && (
               <div className="bg-blue-500/10 border border-blue-400/30 rounded-xl p-4 text-sm text-blue-100 leading-relaxed mb-4">
                 💬 {result.comment}

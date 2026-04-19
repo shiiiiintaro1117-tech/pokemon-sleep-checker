@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { lookupType } from "@/lib/pokemonTypeMap";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -220,9 +221,8 @@ function getGrade(score: number) {
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get("image") as File;
-  const type = formData.get("type") as string;
+  const manualType = (formData.get("type") as string) || null;
   if (!file) return NextResponse.json({ error: "画像がありません" }, { status: 400 });
-  if (!type) return NextResponse.json({ error: "タイプを選択してください" }, { status: 400 });
 
   const bytes = await file.arrayBuffer();
   const base64 = Buffer.from(bytes).toString("base64");
@@ -268,6 +268,15 @@ export async function POST(req: NextRequest) {
   }
 
   const { pokemonName, nature, subskills: rawSubskills } = parsed;
+
+  // タイプをOCR名→対応表で自動決定。手動指定があればそちらを優先
+  const type = manualType ?? lookupType(pokemonName) ?? null;
+  if (!type) {
+    return NextResponse.json(
+      { error: "needsType", pokemonName, nature, subskills: rawSubskills },
+      { status: 200 }
+    );
+  }
 
   const missing: string[] = [];
   if (!nature) missing.push("性格");

@@ -17,6 +17,13 @@ type Result = {
   comment: string;
 };
 
+type NeedsType = {
+  error: "needsType";
+  pokemonName: string;
+  nature: string;
+  subskills: unknown[];
+};
+
 const TYPE_OPTIONS: { value: PokemonType; emoji: string; label: string; color: string }[] = [
   { value: "きのみ", emoji: "🍓", label: "きのみ", color: "from-pink-600 to-rose-500" },
   { value: "食材", emoji: "🥕", label: "食材", color: "from-orange-600 to-amber-500" },
@@ -63,6 +70,7 @@ export default function Home() {
   const [image, setImage] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [selectedType, setSelectedType] = useState<PokemonType | null>(null);
+  const [needsType, setNeedsType] = useState<NeedsType | null>(null);
   const [manualName, setManualName] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
@@ -75,6 +83,8 @@ export default function Home() {
     setError(null);
     setManualName("");
     setFeedback(null);
+    setNeedsType(null);
+    setSelectedType(null);
     const reader = new FileReader();
     reader.onload = (e) => setImage(e.target?.result as string);
     reader.readAsDataURL(f);
@@ -107,18 +117,23 @@ export default function Home() {
     if (f) handleFile(f);
   }, [handleFile]);
 
-  const handleAnalyze = async () => {
-    if (!file || !selectedType) return;
+  const handleAnalyze = async (typeOverride?: PokemonType) => {
+    if (!file) return;
     setLoading(true);
     setError(null);
+    setNeedsType(null);
     try {
       const fd = new FormData();
       fd.append("image", file);
-      fd.append("type", selectedType);
+      if (typeOverride) fd.append("type", typeOverride);
       const res = await fetch("/api/analyze", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "エラーが発生しました");
-      setResult(data);
+      if (data.error === "needsType") {
+        setNeedsType(data as NeedsType);
+      } else {
+        setResult(data);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -155,31 +170,8 @@ export default function Home() {
           <span className="text-blue-400 text-lg group-hover:translate-x-1 transition-transform">→</span>
         </Link>
 
-        {/* ステップ1：タイプ選択 */}
+        {/* スクショ */}
         <div className="glass-card rounded-2xl p-5 mb-4 animate-fadeInUp" style={{ animationDelay: "0.1s" }}>
-          <p className="text-xs text-blue-300 font-bold uppercase tracking-widest mb-3">
-            Step 1 — 得意なものを選択
-          </p>
-          <div className="grid grid-cols-3 gap-3">
-            {TYPE_OPTIONS.map((t) => (
-              <button
-                key={t.value}
-                onClick={() => { setSelectedType(t.value); setResult(null); }}
-                className={`py-4 rounded-xl font-bold transition-all duration-300 border-2 ${
-                  selectedType === t.value
-                    ? `bg-gradient-to-b ${t.color} border-transparent shadow-lg scale-105`
-                    : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:scale-102"
-                }`}
-              >
-                <div className="text-2xl mb-1">{t.emoji}</div>
-                <div className="text-sm">{t.label}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ステップ2：スクショ */}
-        <div className="glass-card rounded-2xl p-5 mb-4 animate-fadeInUp" style={{ animationDelay: "0.2s" }}>
           <p className="text-xs text-blue-300 font-bold uppercase tracking-widest mb-3">
             Step 2 — スクリーンショットをアップロード
           </p>
@@ -223,12 +215,34 @@ export default function Home() {
           <AffiliateBanner id={1} />
         </div>
 
+        {/* タイプ不明時のセレクター */}
+        {needsType && (
+          <div className="glass-card rounded-2xl p-5 mb-4 animate-fadeInUp border border-yellow-400/30">
+            <p className="text-xs text-yellow-300 font-bold mb-1">
+              「{needsType.pokemonName || "このポケモン"}」の得意なものを選んでください
+            </p>
+            <p className="text-xs text-slate-400 mb-3">対応表に登録がないため手動選択が必要です</p>
+            <div className="grid grid-cols-3 gap-3">
+              {TYPE_OPTIONS.map((t) => (
+                <button
+                  key={t.value}
+                  onClick={() => { setSelectedType(t.value); handleAnalyze(t.value); }}
+                  className={`py-4 rounded-xl font-bold transition-all duration-300 border-2 border-white/10 bg-white/5 text-slate-300 hover:bg-white/10`}
+                >
+                  <div className="text-2xl mb-1">{t.emoji}</div>
+                  <div className="text-sm">{t.label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 採点ボタン */}
         <button
-          onClick={handleAnalyze}
-          disabled={!file || !selectedType || loading}
+          onClick={() => handleAnalyze()}
+          disabled={!file || loading}
           className={`w-full font-black py-4 rounded-xl text-lg transition-all duration-300 mb-6 ${
-            file && selectedType && !loading
+            file && !loading
               ? "bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 text-white shadow-lg hover:shadow-blue-500/30 hover:scale-[1.02]"
               : "bg-white/5 text-slate-500 cursor-not-allowed"
           }`}
@@ -237,7 +251,7 @@ export default function Home() {
             <span className="flex items-center justify-center gap-2">
               <span className="animate-spin">🔍</span> AI解析中...
             </span>
-          ) : !selectedType ? "① 得意なものを選んでください" : !file ? "② スクショをアップロードしてください" : "✨ 採点する"}
+          ) : !file ? "スクショをアップロードしてください" : "✨ 採点する"}
         </button>
 
         {/* エラー */}

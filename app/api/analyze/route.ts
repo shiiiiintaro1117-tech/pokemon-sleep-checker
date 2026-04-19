@@ -321,11 +321,13 @@ ${Object.entries(groups).map(([color, candidates]) =>
     } catch { rereadNames = []; }
   }
 
-  // 有効なサブスキル名を確定
+  // 有効なサブスキル名を確定（重複除去・最大5個）
   const subskills: string[] = [
-    ...validItems.map((v) => v.name),
-    ...rereadNames.filter((n) => SUBSKILL_COLOR_MAP[n]),
-  ];
+    ...new Set([
+      ...validItems.map((v) => v.name),
+      ...rereadNames.filter((n) => SUBSKILL_COLOR_MAP[n]),
+    ]),
+  ].slice(0, 5);
 
   const subskillMap = SUBSKILL_SCORES[type] ?? {};
   const natureMap = NATURE_SCORES[type] ?? {};

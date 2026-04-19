@@ -11,7 +11,7 @@ type Result = {
   type: string;
   nature: string;
   subskills: string[];
-  corrected: string[];
+  reread: boolean;
   scores: { nature: number; subskill: number; total: number };
   grade: { label: string; color: string; emoji: string };
   comment: string;
@@ -268,9 +268,9 @@ export default function Home() {
             </div>
 
             {/* コメント */}
-            {result.corrected?.length > 0 && (
+            {result.reread && (
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 text-xs text-yellow-200 mb-4">
-                ⚠️ 色と名前が一致しないため除外したサブスキル：{result.corrected.join("・")}
+                🔄 一部のサブスキルを色情報をもとに再読み取りしました
               </div>
             )}
 

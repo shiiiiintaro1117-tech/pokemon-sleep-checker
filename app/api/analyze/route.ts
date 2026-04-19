@@ -134,25 +134,34 @@ const SUBSKILL_COLOR_MAP: Record<string, "金" | "青" | "白"> = {
   リサーチEXPボーナス: "白",
 };
 
-function validateSubskills(raw: { name: string; color: string }[]): { valid: string[]; corrected: string[] } {
-  const valid: string[] = [];
-  const corrected: string[] = [];
+const SUBSKILLS_BY_COLOR: Record<"金" | "青" | "白", string[]> = {
+  金: ["きのみの数S", "おてつだいボーナス", "スキルレベルアップM", "睡眠EXPボーナス", "げんき回復ボーナス", "ゆめのかけら"],
+  青: ["スキル確率アップM", "食材確率アップM", "おてつだいスピードM", "スキルレベルアップS", "げんきチャージM", "おてつだいサポートM"],
+  白: ["スキル確率アップS", "食材確率アップS", "おてつだいスピードS", "げんきチャージS", "おてつだいサポートS", "最大所持数アップ", "リサーチEXPボーナス"],
+};
+
+function validateSubskills(raw: { name: string; color: string }[]): {
+  valid: { name: string; color: string }[];
+  needsReread: { reportedName: string; color: "金" | "青" | "白" }[];
+} {
+  const valid: { name: string; color: string }[] = [];
+  const needsReread: { reportedName: string; color: "金" | "青" | "白" }[] = [];
+
   for (const item of raw) {
     if (!item?.name) continue;
     const expectedColor = SUBSKILL_COLOR_MAP[item.name];
-    if (!expectedColor) {
-      // 名前が不明なサブスキルはスキップ（誤読の可能性が高い）
-      corrected.push(item.name);
-      continue;
+    const reportedColor = item.color as "金" | "青" | "白";
+
+    if (!expectedColor || (reportedColor && reportedColor !== expectedColor)) {
+      // 名前不明 or 色が一致しない → 再読み取り対象
+      if (reportedColor && SUBSKILLS_BY_COLOR[reportedColor]) {
+        needsReread.push({ reportedName: item.name, color: reportedColor });
+      }
+    } else {
+      valid.push(item);
     }
-    if (item.color && item.color !== expectedColor) {
-      // 色が一致しない → 誤読と判断して除外
-      corrected.push(item.name);
-      continue;
-    }
-    valid.push(item.name);
   }
-  return { valid, corrected };
+  return { valid, needsReread };
 }
 
 const IDEAL_NATURE: Record<string, { best: string[]; good: string[] }> = {
@@ -270,17 +279,59 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 色と名前の整合性チェックで誤読を除外
+  // 色と名前の整合性チェック
   const isStructured = rawSubskills.length > 0 && typeof rawSubskills[0] === "object";
-  const { valid: subskills, corrected } = isStructured
+  const { valid: validItems, needsReread } = isStructured
     ? validateSubskills(rawSubskills as { name: string; color: string }[])
-    : { valid: rawSubskills as string[], corrected: [] };
+    : { valid: (rawSubskills as string[]).map((n) => ({ name: n, color: "" })), needsReread: [] };
+
+  // 再読み取りが必要なサブスキルがある場合
+  let rereadNames: string[] = [];
+  if (needsReread.length > 0) {
+    const groups = needsReread.reduce<Record<string, string[]>>((acc, { color }) => {
+      if (!acc[color]) acc[color] = SUBSKILLS_BY_COLOR[color] ?? [];
+      return acc;
+    }, {});
+
+    const rereadPrompt = `このポケモンスリープのスクリーンショットのサブスキルを再確認してください。
+以下の色の背景を持つサブスキルのみ読み取り、JSON配列で返してください。他のテキストは不要です。
+
+${Object.entries(groups).map(([color, candidates]) =>
+  `【${color}色の背景のサブスキル】\n候補: ${candidates.join("・")}`
+).join("\n\n")}
+
+["読み取ったサブスキル名", ...]`;
+
+    const rereadMsg = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 128,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
+          { type: "text", text: rereadPrompt },
+        ],
+      }],
+    });
+
+    try {
+      const rereadText = rereadMsg.content[0].type === "text" ? rereadMsg.content[0].text : "[]";
+      const arrMatch = rereadText.match(/\[[\s\S]*\]/);
+      rereadNames = JSON.parse(arrMatch ? arrMatch[0] : "[]");
+    } catch { rereadNames = []; }
+  }
+
+  // 有効なサブスキル名を確定
+  const subskills: string[] = [
+    ...validItems.map((v) => v.name),
+    ...rereadNames.filter((n) => SUBSKILL_COLOR_MAP[n]),
+  ];
 
   const subskillMap = SUBSKILL_SCORES[type] ?? {};
   const natureMap = NATURE_SCORES[type] ?? {};
 
   const natureScore = natureMap[nature] ?? 0;
-  const subskillScore = subskills.reduce((sum: number, s: string) => sum + (subskillMap[s] ?? 2), 0);
+  const subskillScore = subskills.reduce((sum, s) => sum + (subskillMap[s] ?? 2), 0);
   const cappedSubskill = Math.min(subskillScore, 75);
   const finalScore = Math.min(natureScore + cappedSubskill, 100);
 
@@ -288,13 +339,9 @@ export async function POST(req: NextRequest) {
   const comment = buildComment({ type, nature, subskills, finalScore });
 
   return NextResponse.json({
-    pokemonName,
-    type,
-    nature,
-    subskills,
-    corrected,
+    pokemonName, type, nature, subskills,
+    reread: rereadNames.length > 0,
     scores: { nature: natureScore, subskill: cappedSubskill, total: finalScore },
-    grade,
-    comment,
+    grade, comment,
   });
 }

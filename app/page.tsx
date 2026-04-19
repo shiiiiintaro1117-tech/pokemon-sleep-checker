@@ -94,8 +94,11 @@ export default function Home() {
     });
   };
 
+  const shareUrl = result
+    ? `https://pokemon-sleep-checker.vercel.app/share?name=${encodeURIComponent(manualName || result.pokemonName || "ポケモン")}&type=${encodeURIComponent(result.type)}&score=${encodeURIComponent(result.scores.total)}&grade=${encodeURIComponent(result.grade.label)}&nature=${encodeURIComponent(result.nature)}&subskills=${encodeURIComponent(result.subskills.join(","))}`
+    : "";
   const shareText = result
-    ? `【ポケスリ個体値チェッカー】\n${manualName || result.pokemonName || "ポケモン"}（${result.type}タイプ）\nスコア：${result.scores.total}点 ${result.grade.emoji}${result.grade.label}\nhttps://pokemon-sleep-checker.vercel.app`
+    ? `【ポケスリ個体値チェッカー】\n${manualName || result.pokemonName || "ポケモン"}（${result.type}タイプ）\nスコア：${result.scores.total}点 ${result.grade.emoji}${result.grade.label}`
     : "";
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -305,12 +308,12 @@ export default function Home() {
 
             {/* シェアボタン */}
             <div className="flex gap-2 mb-4">
-              <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
+              <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`}
                 target="_blank" rel="noopener noreferrer"
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-black border border-white/20 text-white text-sm font-bold hover:bg-white/10 transition">
                 𝕏 でシェア
               </a>
-              <a href={`https://bsky.app/intent/compose?text=${encodeURIComponent(shareText)}`}
+              <a href={`https://bsky.app/intent/compose?text=${encodeURIComponent(shareText + "\n" + shareUrl)}`}
                 target="_blank" rel="noopener noreferrer"
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-sky-600/30 border border-sky-400/40 text-sky-300 text-sm font-bold hover:bg-sky-600/40 transition">
                 🦋 Blueskyでシェア

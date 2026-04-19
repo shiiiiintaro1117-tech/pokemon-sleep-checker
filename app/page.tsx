@@ -283,12 +283,6 @@ export default function Home() {
             </div>
 
             {/* コメント */}
-            {result.reread && (
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 text-xs text-yellow-200 mb-4">
-                🔄 一部のサブスキルを色情報をもとに再読み取りしました
-              </div>
-            )}
-
             {result.comment && (
               <div className="bg-blue-500/10 border border-blue-400/30 rounded-xl p-4 text-sm text-blue-100 leading-relaxed mb-4">
                 💬 {result.comment}

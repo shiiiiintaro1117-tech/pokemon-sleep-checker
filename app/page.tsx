@@ -69,7 +69,6 @@ function StarField() {
 export default function Home() {
   const [image, setImage] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [selectedType, setSelectedType] = useState<PokemonType | null>(null);
   const [needsType, setNeedsType] = useState<NeedsType | null>(null);
   const [manualName, setManualName] = useState("");
   const [result, setResult] = useState<Result | null>(null);
@@ -84,7 +83,6 @@ export default function Home() {
     setManualName("");
     setFeedback(null);
     setNeedsType(null);
-    setSelectedType(null);
     const reader = new FileReader();
     reader.onload = (e) => setImage(e.target?.result as string);
     reader.readAsDataURL(f);
@@ -173,7 +171,7 @@ export default function Home() {
         {/* スクショ */}
         <div className="glass-card rounded-2xl p-5 mb-4 animate-fadeInUp" style={{ animationDelay: "0.1s" }}>
           <p className="text-xs text-blue-300 font-bold uppercase tracking-widest mb-3">
-            Step 2 — スクリーンショットをアップロード
+            スクリーンショットをアップロード
           </p>
           <div
             onDrop={handleDrop}
@@ -226,7 +224,7 @@ export default function Home() {
               {TYPE_OPTIONS.map((t) => (
                 <button
                   key={t.value}
-                  onClick={() => { setSelectedType(t.value); handleAnalyze(t.value); }}
+                  onClick={() => handleAnalyze(t.value)}
                   className={`py-4 rounded-xl font-bold transition-all duration-300 border-2 border-white/10 bg-white/5 text-slate-300 hover:bg-white/10`}
                 >
                   <div className="text-2xl mb-1">{t.emoji}</div>

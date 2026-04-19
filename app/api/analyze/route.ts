@@ -243,26 +243,32 @@ export async function POST(req: NextRequest) {
 ※取得済みのサブスキルのみ含める（未取得はスキップ）
 ※読み取れない項目はnullにする`;
 
-  const message = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 256,
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
-          { type: "text", text: prompt },
-        ],
-      },
-    ],
-  });
-
-  const text = message.content[0].type === "text" ? message.content[0].text : "";
+  async function callOCR() {
+    const msg = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 512,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
+            { type: "text", text: prompt },
+          ],
+        },
+      ],
+    });
+    const raw = msg.content[0].type === "text" ? msg.content[0].text : "";
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    return JSON.parse(jsonMatch ? jsonMatch[0] : raw);
+  }
 
   let parsed;
   try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+    parsed = await callOCR();
+    // サブスキルが空だった場合は1回リトライ
+    if (!parsed?.subskills || parsed.subskills.length === 0) {
+      parsed = await callOCR();
+    }
   } catch {
     return NextResponse.json({ error: "読み取りに失敗しました。別の画像をお試しください。" }, { status: 422 });
   }

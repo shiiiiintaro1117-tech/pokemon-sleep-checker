@@ -299,6 +299,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     pokemonName, type, nature, subskills,
     reread: false,
+    _debug: { raw: rawSubskills },
     scores: { nature: natureScore, subskill: cappedSubskill, total: finalScore },
     grade, comment,
   });

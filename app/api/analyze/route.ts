@@ -234,18 +234,19 @@ export async function POST(req: NextRequest) {
   "pokemonName": "ポケモン名",
   "nature": "性格名",
   "subskills": [
-    {"name": "サブスキル名", "color": "金"},
-    {"name": "サブスキル名", "color": "青"},
-    {"name": "サブスキル名", "color": "白"},
-    {"name": "サブスキル名", "color": "金"},
-    {"name": "サブスキル名", "color": "青"}
+    {"slot": "Lv10",  "name": "サブスキル名", "color": "金または青または白"},
+    {"slot": "Lv25",  "name": "サブスキル名", "color": "金または青または白"},
+    {"slot": "Lv50",  "name": "サブスキル名", "color": "金または青または白"},
+    {"slot": "Lv75",  "name": "サブスキル名", "color": "金または青または白"},
+    {"slot": "Lv100", "name": "サブスキル名", "color": "金または青または白"}
   ]
 }
 
-【サブスキルについて】
-- 取得済み・未取得（鍵マーク付き）を問わず、表示されている全スロット（最大5個）を漏れなく読み取ること
-- 各スロットの背景色を必ず判定すること：金＝黄金色の背景、青＝水色の背景、白＝グレー/白の背景
-- 名前が見えているスロットは全て含める（解放レベルに達していなくても読み取る）`;
+【重要】
+- サブスキルはLv10・Lv25・Lv50・Lv75・Lv100の5スロット必ず全て読み取ること
+- 鍵マーク付き（未解放）でも名前が見えていれば読み取る
+- 背景色：金＝黄金色、青＝水色、白＝グレー/白
+- スロットが見当たらない場合のみnameをnullにする`;
 
   async function callOCR() {
     const msg = await client.messages.create({
@@ -277,7 +278,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "読み取りに失敗しました。別の画像をお試しください。" }, { status: 422 });
   }
 
-  const { pokemonName, nature, subskills: rawSubskills } = parsed;
+  const { pokemonName, nature, subskills: rawSubskillsFull } = parsed;
+
+  // slotフィールド付きの場合はnameがnullのスロットを除外して正規化
+  const rawSubskills = (rawSubskillsFull ?? [])
+    .map((s: { name?: string; color?: string }) => ({ name: s.name ?? null, color: s.color ?? "" }))
+    .filter((s: { name: string | null }) => s.name);
 
   // タイプをOCR名→対応表で自動決定。手動指定があればそちらを優先
   const type = manualType ?? lookupType(pokemonName) ?? null;

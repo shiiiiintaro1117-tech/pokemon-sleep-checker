@@ -276,12 +276,19 @@ export async function POST(req: NextRequest) {
   }
 
   // 既知のサブスキル名に一致するものだけ採用（重複除去・最大5個）
+  // OCRが末尾にS/M/Lを誤付加する場合があるため正規化する
   const allKnownSubskills = new Set(Object.keys(SUBSKILL_COLOR_MAP));
+  function normalizeSubskillName(n: string): string | null {
+    if (allKnownSubskills.has(n)) return n;
+    const stripped = n.replace(/[SMLsml]$/, "");
+    if (allKnownSubskills.has(stripped)) return stripped;
+    return null;
+  }
   const subskills: string[] = [
     ...new Set(
       (rawSubskills as { name: string }[])
-        .map((s) => s.name)
-        .filter((n) => allKnownSubskills.has(n))
+        .map((s) => normalizeSubskillName(s.name))
+        .filter((n): n is string => n !== null)
     ),
   ].slice(0, 5);
 
@@ -299,7 +306,6 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     pokemonName, type, nature, subskills,
     reread: false,
-    _debug: { raw: rawSubskills },
     scores: { nature: natureScore, subskill: cappedSubskill, total: finalScore },
     grade, comment,
   });

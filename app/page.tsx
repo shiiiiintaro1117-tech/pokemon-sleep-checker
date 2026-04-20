@@ -11,6 +11,7 @@ type Result = {
   type: string;
   nature: string;
   subskills: string[];
+  subskillDetails: { name: string; score: number }[];
   reread: boolean;
   scores: { nature: number; subskill: number; total: number };
   grade: { label: string; color: string; emoji: string };
@@ -279,7 +280,20 @@ export default function Home() {
             {/* スコア内訳 */}
             <div className="space-y-4 mb-5">
               <ScoreBar label="性格" value={result.scores.nature} max={25} detail={result.nature} color="from-pink-500 to-rose-400" />
-              <ScoreBar label="サブスキル" value={result.scores.subskill} max={75} detail={result.subskills.join(" / ")} color="from-blue-500 to-cyan-400" />
+              <div>
+                <div className="flex justify-between text-xs mb-2">
+                  <span className="text-slate-400 font-medium">サブスキル</span>
+                  <span className="text-white font-bold">{result.scores.subskill}<span className="text-slate-500">/75</span></span>
+                </div>
+                <div className="bg-white/5 rounded-xl overflow-hidden divide-y divide-white/5">
+                  {(result.subskillDetails ?? result.subskills.map(s => ({ name: s, score: 0 }))).map((s) => (
+                    <div key={s.name} className="flex items-center justify-between px-3 py-2">
+                      <span className="text-sm text-slate-200">{s.name}</span>
+                      <span className="text-sm font-bold text-blue-300">+{s.score}pt</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* コメント */}

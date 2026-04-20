@@ -296,7 +296,8 @@ export async function POST(req: NextRequest) {
   const natureMap = NATURE_SCORES[type] ?? {};
 
   const natureScore = natureMap[nature] ?? 0;
-  const subskillScore = subskills.reduce((sum, s) => sum + (subskillMap[s] ?? 2), 0);
+  const subskillDetails = subskills.map((s) => ({ name: s, score: subskillMap[s] ?? 2 }));
+  const subskillScore = subskillDetails.reduce((sum, s) => sum + s.score, 0);
   const cappedSubskill = Math.min(subskillScore, 75);
   const finalScore = Math.min(natureScore + cappedSubskill, 100);
 
@@ -307,6 +308,7 @@ export async function POST(req: NextRequest) {
     pokemonName, type, nature, subskills,
     reread: false,
     scores: { nature: natureScore, subskill: cappedSubskill, total: finalScore },
+    subskillDetails,
     grade, comment,
   });
 }

@@ -17,15 +17,14 @@ const GRADE_EMOJIS: Record<string, string> = {
   ノーマル: "🔰",
 };
 
-async function loadFont(text: string): Promise<ArrayBuffer | null> {
+async function loadFont(): Promise<ArrayBuffer | null> {
   try {
-    // IE UA → woff形式で返ってくる（Satoriはwoff2非対応）
+    // v1 APIはTTF形式を返す（SatoriはTTF対応）
     const css = await fetch(
-      `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700&text=${encodeURIComponent(text)}`,
-      { headers: { "User-Agent": "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)" } }
+      "https://fonts.googleapis.com/css?family=Noto+Sans+JP:700",
+      { headers: { "User-Agent": "Mozilla/5.0" } }
     ).then((r) => r.text());
-
-    const match = css.match(/url\((https?:\/\/[^)]+)\)/);
+    const match = css.match(/url\((https?:\/\/[^)]+\.ttf)\)/);
     if (!match) return null;
     const res = await fetch(match[1]);
     if (!res.ok) return null;
@@ -37,18 +36,17 @@ async function loadFont(text: string): Promise<ArrayBuffer | null> {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const name = searchParams.get("name") || "ポケモン";
-  const type = searchParams.get("type") || "";
-  const score = searchParams.get("score") || "0";
-  const grade = searchParams.get("grade") || "ノーマル";
-  const nature = searchParams.get("nature") || "";
-  const subskills = (searchParams.get("subskills") || "").split(",").filter(Boolean);
+  const name = searchParams.get("n") || searchParams.get("name") || "ポケモン";
+  const type = searchParams.get("t") || searchParams.get("type") || "";
+  const score = searchParams.get("s") || searchParams.get("score") || "0";
+  const grade = searchParams.get("g") || searchParams.get("grade") || "ノーマル";
+  const nature = searchParams.get("na") || searchParams.get("nature") || "";
+  const subskills = (searchParams.get("sk") || searchParams.get("subskills") || "").split(",").filter(Boolean);
 
   const gradeColor = GRADE_COLORS[grade] || "#94a3b8";
   const gradeEmoji = GRADE_EMOJIS[grade] || "🔰";
 
-  const allText = `ポケスリ個体値チェッカー${name}${type}タイプ${grade}点性格${nature}${subskills.join("")}`;
-  const fontData = await loadFont(allText);
+  const fontData = await loadFont();
   const fonts = fontData
     ? [{ name: "NotoSansJP", data: fontData, weight: 700 as const }]
     : [];

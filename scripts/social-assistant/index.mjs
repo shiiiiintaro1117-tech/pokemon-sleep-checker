@@ -22,20 +22,6 @@ const DEFAULT_CONFIG = {
   discord: {
     username: "ポケスリSNS補助Bot",
   },
-  replyTemplates: [
-    "その性格、タイプによってはかなり強い組み合わせになりますね。",
-    "サブスキルの解放状況まで見ると、判断がかなりスッキリしそうです。",
-    "きのみ・食材・スキルどのタイプかで評価が変わってきますね。",
-    "育成優先度に迷ったら、24Hエナジー期待値で比べると選びやすいです。",
-    "性格とサブスキルの噛み合い、想像以上に影響が大きかったりします。",
-    "解放済みのサブスキルの並び次第では、性格が惜しくても十分戦えることもありますよ。",
-    "おてスピ系がどこに来るかで印象がかなり変わるタイプですね。",
-    "最大所持数アップやEXP系のサブスキルをどう評価するか、いつも迷いどころです。",
-    "スコアだけでなく食材構成まで絡むと、一気に複雑になりますよね。",
-    "厳選の悩みあるある。スクショ一枚でざっくり確認できると少し楽になります。",
-    "性格とサブスキルをまとめて採点して比べると判断しやすいです。{siteUrl}",
-    "もし参考になれば、スクショから個体値をまとめてチェックできます。{siteUrl}",
-  ],
 };
 
 const SAMPLE_POSTS = [
@@ -349,24 +335,6 @@ async function fetchBlueskyPosts(config, warnings) {
   return posts;
 }
 
-function makeReplyDrafts(post, siteUrl, config) {
-  const templates = (config.replyTemplates ?? [])
-    .map((t) => t.replace(/\{siteUrl\}/g, siteUrl));
-
-  if (templates.length === 0) return [];
-
-  // 投稿テキストに含まれるキーワードにマッチするテンプレートを優先し、
-  // 残りをランダムで補完して3件選ぶ
-  const text = normalizeText(post.text);
-  const keywords = config.replyKeywords ?? [];
-  const priority = templates.filter((t) =>
-    keywords.some((kw) => text.includes(kw) && t.includes(kw))
-  );
-  const rest = templates.filter((t) => !priority.includes(t))
-    .sort(() => Math.random() - 0.5);
-
-  return [...priority, ...rest].slice(0, 3);
-}
 
 function makeOwnPostIdeas(siteUrl, config) {
   // configにpostIdeasが定義されていればそちらを優先
@@ -408,21 +376,15 @@ function renderOwnPostIdeas(ownPostIdeas) {
   ]);
 }
 
-function renderPost(post, index, config) {
-  const drafts = makeReplyDrafts(post, config.siteUrl, config);
+function renderPost(post, index) {
   return [
     `### ${index + 1}. ${post.platform} / ${post.author}`,
     "",
     `- URL: ${post.url || "(URLなし)"}`,
     `- 検索語: ${post.query}`,
-    `- スコア: ${post.assistantScore}`,
     `- 反応目安: いいね ${post.metrics?.likeCount ?? 0} / 返信 ${post.metrics?.replyCount ?? 0} / RP ${post.metrics?.repostCount ?? 0}`,
     "",
     "> " + normalizeText(post.text).replace(/\n/g, "\n> "),
-    "",
-    "返信候補:",
-    "",
-    ...drafts.map((draft, draftIndex) => `${draftIndex + 1}. ${draft}`),
   ].join("\n");
 }
 
@@ -430,31 +392,19 @@ function renderReport(posts, warnings, config, generatedAt) {
   const ownPostIdeas = makeOwnPostIdeas(config.siteUrl, config);
 
   return [
-    "# ポケスリSNS補助レポート",
+    "# SNS補助レポート",
     "",
     `生成日時: ${generatedAt}`,
-    "",
-    "## 重要な前提",
-    "",
-    "- このレポートは返信候補と投稿改善案を作るだけです。",
-    "- 自動いいね、自動投稿、自動フォロー、自動返信は行いません。",
-    "- 候補文は必ず人が確認し、相手の投稿内容に合わせて編集してください。",
     "",
     "## 今日の投稿案",
     "",
     ...renderOwnPostIdeas(ownPostIdeas),
-    "",
-    "## 投稿前チェック",
-    "",
-    "- 最初の1行で、厳選・個体値・エナジー期待値などの興味ポイントが伝わるか。",
-    "- スクショや数値がある場合、見どころを1つだけ添えているか。",
-    "- 宣伝リンクだけにならず、相手や読者の判断に役立つ内容が入っているか。",
-    "- 同じ文面を連投していないか。",
-    "",
-    "## 返信候補",
-    "",
-    posts.length ? posts.map((post, index) => renderPost(post, index, config)).join("\n\n") : "候補投稿は見つかりませんでした。",
-    "",
+    posts.length ? [
+      "## 注目投稿",
+      "",
+      posts.map((post, index) => renderPost(post, index)).join("\n\n"),
+      "",
+    ].join("\n") : "",
     warnings.length ? ["## 注意", "", ...warnings.map((warning) => `- ${warning}`), ""].join("\n") : "",
   ].filter(Boolean).join("\n");
 }

@@ -22,6 +22,20 @@ const DEFAULT_CONFIG = {
   discord: {
     username: "ポケスリSNS補助Bot",
   },
+  replyTemplates: [
+    "その性格、タイプによってはかなり強い組み合わせになりますね。",
+    "サブスキルの解放状況まで見ると、判断がかなりスッキリしそうです。",
+    "きのみ・食材・スキルどのタイプかで評価が変わってきますね。",
+    "育成優先度に迷ったら、24Hエナジー期待値で比べると選びやすいです。",
+    "性格とサブスキルの噛み合い、想像以上に影響が大きかったりします。",
+    "解放済みのサブスキルの並び次第では、性格が惜しくても十分戦えることもありますよ。",
+    "おてスピ系がどこに来るかで印象がかなり変わるタイプですね。",
+    "最大所持数アップやEXP系のサブスキルをどう評価するか、いつも迷いどころです。",
+    "スコアだけでなく食材構成まで絡むと、一気に複雑になりますよね。",
+    "厳選の悩みあるある。スクショ一枚でざっくり確認できると少し楽になります。",
+    "性格とサブスキルをまとめて採点して比べると判断しやすいです。{siteUrl}",
+    "もし参考になれば、スクショから個体値をまとめてチェックできます。{siteUrl}",
+  ],
 };
 
 const SAMPLE_POSTS = [
@@ -335,22 +349,23 @@ async function fetchBlueskyPosts(config, warnings) {
   return posts;
 }
 
-function makeReplyDrafts(post, siteUrl) {
+function makeReplyDrafts(post, siteUrl, config) {
+  const templates = (config.replyTemplates ?? [])
+    .map((t) => t.replace(/\{siteUrl\}/g, siteUrl));
+
+  if (templates.length === 0) return [];
+
+  // 投稿テキストに含まれるキーワードにマッチするテンプレートを優先し、
+  // 残りをランダムで補完して3件選ぶ
   const text = normalizeText(post.text);
-  const mentionsIngredient = text.includes("食材");
-  const mentionsSubSkill = text.includes("サブスキル") || text.includes("おてスピ") || text.includes("きのみS");
+  const keywords = config.replyKeywords ?? [];
+  const priority = templates.filter((t) =>
+    keywords.some((kw) => text.includes(kw) && t.includes(kw))
+  );
+  const rest = templates.filter((t) => !priority.includes(t))
+    .sort(() => Math.random() - 0.5);
 
-  const drafts = [
-    "その構成かなり悩みどころですね。性格とサブスキルの噛み合いまで見ると判断が変わりそうなので、スクショ全体で見比べるのがよさそうです。",
-    mentionsSubSkill
-      ? "サブスキルの並びが強そうに見えますね。解放レベルと性格補正まで含めると、育成優先度をかなり判断しやすくなりそうです。"
-      : "ぱっと見だけだと判断が難しいタイプですね。得意タイプ、性格、解放済みスキルをまとめて見るとかなり整理しやすそうです。",
-    mentionsIngredient
-      ? `食材構成も絡むので、必要ならスクショからざっくり確認できます。${siteUrl} は手軽に見たい時に便利です。`
-      : `もし迷っていたら、スクショだけで個体値と24Hエナジーを確認できます。${siteUrl}`,
-  ];
-
-  return drafts;
+  return [...priority, ...rest].slice(0, 3);
 }
 
 function makeOwnPostIdeas(siteUrl, config) {
@@ -394,7 +409,7 @@ function renderOwnPostIdeas(ownPostIdeas) {
 }
 
 function renderPost(post, index, config) {
-  const drafts = makeReplyDrafts(post, config.siteUrl);
+  const drafts = makeReplyDrafts(post, config.siteUrl, config);
   return [
     `### ${index + 1}. ${post.platform} / ${post.author}`,
     "",

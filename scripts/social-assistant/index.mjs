@@ -353,7 +353,12 @@ function makeReplyDrafts(post, siteUrl) {
   return drafts;
 }
 
-function makeOwnPostIdeas(siteUrl) {
+function makeOwnPostIdeas(siteUrl, config) {
+  // configにpostIdeasが定義されていればそちらを優先
+  if (config.postIdeas) {
+    return config.postIdeas;
+  }
+
   return {
     morning: [
       "おはようございます。今日のポケスリ、リサーチ結果で「育てるか迷う個体」いましたか？ 個体値だけじゃなく、性格とサブスキルの噛み合いまで見ると判断しやすいです。",
@@ -407,7 +412,7 @@ function renderPost(post, index, config) {
 }
 
 function renderReport(posts, warnings, config, generatedAt) {
-  const ownPostIdeas = makeOwnPostIdeas(config.siteUrl);
+  const ownPostIdeas = makeOwnPostIdeas(config.siteUrl, config);
 
   return [
     "# ポケスリSNS補助レポート",

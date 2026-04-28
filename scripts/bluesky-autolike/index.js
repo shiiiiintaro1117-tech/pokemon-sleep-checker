@@ -3,7 +3,7 @@ import "dotenv/config";
 
 const IDENTIFIER = process.env.BSKY_IDENTIFIER;
 const APP_PASSWORD = process.env.BSKY_APP_PASSWORD;
-const SEARCH_QUERY = "ポケスリ";
+const SEARCH_QUERY = process.env.BSKY_SEARCH_QUERY || "ポケスリ";
 const LIKE_COUNT = 10;
 
 // 環境変数チェック

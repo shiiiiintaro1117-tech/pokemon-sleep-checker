@@ -8,66 +8,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, "../..");
 
 const DEFAULT_CONFIG = {
-  queries: [
-    "ポケスリ 個体値",
-    "ポケモンスリープ 厳選",
-    "ポケスリ 食材",
-    "ポケスリ サブスキル",
-  ],
-  maxPostsPerQuery: 10,
-  reportPostLimit: 12,
-  excludeWords: ["交換", "販売", "プレゼント企画", "フォロバ", "副業", "エロ"],
-  ownHandles: [],
   siteUrl: "https://pokemon-sleep-checker.vercel.app",
   discord: {
     username: "ポケスリSNS補助Bot",
   },
+  postIdeas: null,
 };
-
-const SAMPLE_POSTS = [
-  {
-    platform: "sample",
-    id: "sample-1",
-    author: "sleep-researcher.example",
-    url: "https://example.com/sample-1",
-    text: "ポケスリのゼニガメ、食材確率アップSとMがあるけど性格うっかりや。これ育てていいか悩む。",
-    createdAt: new Date().toISOString(),
-    metrics: { likeCount: 8, replyCount: 2, repostCount: 1 },
-    query: "ポケスリ 個体値",
-  },
-  {
-    platform: "sample",
-    id: "sample-2",
-    author: "berry-helper.example",
-    url: "https://example.com/sample-2",
-    text: "ベイリーフの厳選ラインがわからない。おてスピM、きのみS、食材確率Mなら強い？",
-    createdAt: new Date().toISOString(),
-    metrics: { likeCount: 15, replyCount: 5, repostCount: 3 },
-    query: "ポケモンスリープ 厳選",
-  },
-  {
-    platform: "sample",
-    id: "sample-3",
-    author: "recipe-note.example",
-    url: "https://example.com/sample-3",
-    text: "ポケスリ、食材タイプは食材構成まで見ると急に難しくなる。スクショだけで判断できたら楽そう。",
-    createdAt: new Date().toISOString(),
-    metrics: { likeCount: 22, replyCount: 1, repostCount: 4 },
-    query: "ポケスリ 食材",
-  },
-];
-
-const X_SEARCH_ENDPOINT = "https://api.x.com/2/tweets/search/recent";
-const BSKY_SEARCH_ENDPOINTS = [
-  "https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts",
-  "https://bsky.social/xrpc/app.bsky.feed.searchPosts",
-];
 
 function parseArgs(argv) {
   const args = {
     configPath: null,
-    sample: false,
-    limit: null,
     outPath: null,
     discord: false,
     discordWebhookUrl: null,
@@ -76,8 +26,6 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--config") args.configPath = argv[++index];
-    else if (arg === "--sample") args.sample = true;
-    else if (arg === "--limit") args.limit = Number(argv[++index]);
     else if (arg === "--out") args.outPath = argv[++index];
     else if (arg === "--discord") args.discord = true;
     else if (arg === "--discord-webhook-url") args.discordWebhookUrl = argv[++index];
@@ -94,9 +42,6 @@ async function loadConfig(configPath) {
   return {
     ...DEFAULT_CONFIG,
     ...userConfig,
-    queries: userConfig.queries ?? DEFAULT_CONFIG.queries,
-    excludeWords: userConfig.excludeWords ?? DEFAULT_CONFIG.excludeWords,
-    ownHandles: userConfig.ownHandles ?? DEFAULT_CONFIG.ownHandles,
     discord: {
       ...DEFAULT_CONFIG.discord,
       ...(userConfig.discord ?? {}),
@@ -136,211 +81,8 @@ async function loadLocalEnv() {
   }
 }
 
-function normalizeHandle(handle) {
-  return String(handle ?? "").replace(/^@/, "").toLowerCase();
-}
-
-function normalizeText(text) {
-  return String(text ?? "").replace(/\s+/g, " ").trim();
-}
-
-function engagementScore(metrics = {}) {
-  return (metrics.likeCount ?? 0) + (metrics.replyCount ?? 0) * 2 + (metrics.repostCount ?? 0) * 2;
-}
-
-function scorePost(post, config) {
-  const text = normalizeText(post.text);
-  const lowerAuthor = normalizeHandle(post.author);
-  let score = engagementScore(post.metrics);
-
-  const interestWords = [
-    "個体値",
-    "厳選",
-    "サブスキル",
-    "食材",
-    "性格",
-    "きのみ",
-    "スキル確率",
-    "おてスピ",
-    "おてつだい",
-    "エナジー",
-  ];
-  const questionWords = ["?", "？", "悩", "迷", "どう", "教えて", "わからない", "強い"];
-
-  score += interestWords.filter((word) => text.includes(word)).length * 3;
-  score += questionWords.filter((word) => text.includes(word)).length * 2;
-  score -= config.excludeWords.filter((word) => text.includes(word)).length * 20;
-  score -= (text.match(/https?:\/\//g) ?? []).length * 3;
-  score -= (text.match(/#/g) ?? []).length > 4 ? 8 : 0;
-  score -= text.length < 18 ? 8 : 0;
-  score -= config.ownHandles.map(normalizeHandle).includes(lowerAuthor) ? 100 : 0;
-
-  return score;
-}
-
-function shouldKeepPost(post, config) {
-  const text = normalizeText(post.text);
-  if (!text) return false;
-  if (config.excludeWords.some((word) => text.includes(word))) return false;
-  if (config.ownHandles.map(normalizeHandle).includes(normalizeHandle(post.author))) return false;
-  return true;
-}
-
-function dedupePosts(posts) {
-  const seen = new Set();
-  return posts.filter((post) => {
-    const key = `${post.platform}:${post.id || normalizeText(post.text).slice(0, 80)}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-async function fetchJson(url, options = {}) {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      "user-agent": "pokemon-sleep-checker-social-assistant/1.0",
-      accept: "application/json",
-      ...(options.headers ?? {}),
-    },
-  });
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`${response.status} ${response.statusText}: ${body.slice(0, 160)}`);
-  }
-
-  return response.json();
-}
-
-async function fetchXPosts(config, warnings) {
-  const bearerToken = process.env.X_BEARER_TOKEN;
-  if (!bearerToken) {
-    warnings.push("X_BEARER_TOKEN が未設定のため、Xの検索はスキップしました。");
-    return [];
-  }
-
-  const posts = [];
-  for (const query of config.queries) {
-    const params = new URLSearchParams({
-      query: `${query} lang:ja -is:retweet`,
-      max_results: String(Math.max(10, Math.min(100, config.maxPostsPerQuery))),
-      "tweet.fields": "created_at,public_metrics,lang",
-      expansions: "author_id",
-      "user.fields": "username,name",
-    });
-
-    try {
-      const data = await fetchJson(`${X_SEARCH_ENDPOINT}?${params}`, {
-        headers: { authorization: `Bearer ${bearerToken}` },
-      });
-      const users = new Map((data.includes?.users ?? []).map((user) => [user.id, user]));
-
-      for (const tweet of data.data ?? []) {
-        const user = users.get(tweet.author_id);
-        posts.push({
-          platform: "X",
-          id: tweet.id,
-          author: user?.username ? `@${user.username}` : tweet.author_id,
-          url: user?.username ? `https://x.com/${user.username}/status/${tweet.id}` : `https://x.com/i/web/status/${tweet.id}`,
-          text: tweet.text,
-          createdAt: tweet.created_at,
-          metrics: {
-            likeCount: tweet.public_metrics?.like_count ?? 0,
-            replyCount: tweet.public_metrics?.reply_count ?? 0,
-            repostCount: tweet.public_metrics?.retweet_count ?? 0,
-          },
-          query,
-        });
-      }
-    } catch (error) {
-      warnings.push(`X検索「${query}」に失敗しました: ${error.message}`);
-    }
-  }
-
-  return posts;
-}
-
-async function getBskyAccessToken(warnings) {
-  const identifier = process.env.BSKY_IDENTIFIER;
-  const password = process.env.BSKY_APP_PASSWORD;
-  if (!identifier || !password) return null;
-
-  try {
-    const res = await fetch("https://bsky.social/xrpc/com.atproto.server.createSession", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ identifier, password }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.accessJwt ?? null;
-  } catch {
-    warnings.push("Blueskyのセッション取得に失敗しました。検索はスキップします。");
-    return null;
-  }
-}
-
-async function fetchBlueskyPosts(config, warnings) {
-  const posts = [];
-  const accessToken = await getBskyAccessToken(warnings);
-
-  for (const query of config.queries) {
-    const params = new URLSearchParams({
-      q: query,
-      limit: String(Math.max(1, Math.min(100, config.maxPostsPerQuery))),
-      sort: "latest",
-    });
-
-    try {
-      let data = null;
-      let lastError = null;
-      for (const endpoint of BSKY_SEARCH_ENDPOINTS) {
-        try {
-          data = await fetchJson(`${endpoint}?${params}`, {
-            headers: accessToken ? { authorization: `Bearer ${accessToken}` } : {},
-          });
-          break;
-        } catch (error) {
-          lastError = error;
-        }
-      }
-
-      if (!data) throw lastError;
-
-      for (const post of data.posts ?? []) {
-        const record = post.record ?? {};
-        const handle = post.author?.handle ?? "";
-        posts.push({
-          platform: "Bluesky",
-          id: post.uri,
-          author: handle ? `@${handle}` : post.author?.displayName ?? "unknown",
-          url: handle && post.uri ? `https://bsky.app/profile/${handle}/post/${post.uri.split("/").pop()}` : "",
-          text: record.text,
-          createdAt: record.createdAt ?? post.indexedAt,
-          metrics: {
-            likeCount: post.likeCount ?? 0,
-            replyCount: post.replyCount ?? 0,
-            repostCount: post.repostCount ?? 0,
-          },
-          query,
-        });
-      }
-    } catch (error) {
-      warnings.push(`Bluesky検索「${query}」に失敗しました: ${error.message}`);
-    }
-  }
-
-  return posts;
-}
-
-
 function makeOwnPostIdeas(siteUrl, config) {
-  // configにpostIdeasが定義されていればそちらを優先
-  if (config.postIdeas) {
-    return config.postIdeas;
-  }
+  if (config.postIdeas) return config.postIdeas;
 
   return {
     morning: [
@@ -376,37 +118,16 @@ function renderOwnPostIdeas(ownPostIdeas) {
   ]);
 }
 
-function renderPost(post, index) {
-  return [
-    `### ${index + 1}. ${post.platform} / ${post.author}`,
-    "",
-    `- URL: ${post.url || "(URLなし)"}`,
-    `- 検索語: ${post.query}`,
-    `- 反応目安: いいね ${post.metrics?.likeCount ?? 0} / 返信 ${post.metrics?.replyCount ?? 0} / RP ${post.metrics?.repostCount ?? 0}`,
-    "",
-    "> " + normalizeText(post.text).replace(/\n/g, "\n> "),
-  ].join("\n");
-}
-
-function renderReport(posts, warnings, config, generatedAt) {
+function renderReport(config, generatedAt) {
   const ownPostIdeas = makeOwnPostIdeas(config.siteUrl, config);
 
   return [
-    "# SNS補助レポート",
+    "# SNS投稿案",
     "",
     `生成日時: ${generatedAt}`,
     "",
-    "## 今日の投稿案",
-    "",
     ...renderOwnPostIdeas(ownPostIdeas),
-    posts.length ? [
-      "## 注目投稿",
-      "",
-      posts.map((post, index) => renderPost(post, index)).join("\n\n"),
-      "",
-    ].join("\n") : "",
-    warnings.length ? ["## 注意", "", ...warnings.map((warning) => `- ${warning}`), ""].join("\n") : "",
-  ].filter(Boolean).join("\n");
+  ].join("\n");
 }
 
 async function writeReports(report, outPath) {
@@ -460,7 +181,7 @@ function splitDiscordContent(report) {
 
 async function sendDiscordReport(report, config, webhookUrl) {
   if (!webhookUrl) {
-    throw new Error("DISCORD_WEBHOOK_URL が未設定です。Discordに投稿する場合はWebhook URLを設定してください。");
+    throw new Error("DISCORD_WEBHOOK_URL が未設定です。");
   }
 
   const chunks = splitDiscordContent(report);
@@ -481,7 +202,7 @@ async function sendDiscordReport(report, config, webhookUrl) {
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");
-      throw new Error(`Discord投稿に失敗しました: ${response.status} ${response.statusText} ${body.slice(0, 160)}`);
+      throw new Error(`Discord投稿失敗: ${response.status} ${response.statusText} ${body.slice(0, 160)}`);
     }
   }
 
@@ -493,29 +214,9 @@ async function main() {
 
   const args = parseArgs(process.argv.slice(2));
   const config = await loadConfig(args.configPath);
-  const warnings = [];
-
-  const rawPosts = args.sample
-    ? SAMPLE_POSTS
-    : [
-        ...(await fetchXPosts(config, warnings)),
-        ...(await fetchBlueskyPosts(config, warnings)),
-      ];
-
-  const limit = args.limit ?? config.reportPostLimit;
-  const posts = dedupePosts(rawPosts)
-    .filter((post) => shouldKeepPost(post, config))
-    .map((post) => ({
-      ...post,
-      text: normalizeText(post.text),
-      assistantScore: scorePost(post, config),
-    }))
-    .filter((post) => post.assistantScore > -10)
-    .sort((a, b) => b.assistantScore - a.assistantScore)
-    .slice(0, limit);
 
   const generatedAt = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-  const report = renderReport(posts, warnings, config, generatedAt);
+  const report = renderReport(config, generatedAt);
   const paths = await writeReports(report, args.outPath);
   const discordWebhookUrl = args.discordWebhookUrl ?? process.env.DISCORD_WEBHOOK_URL;
 
@@ -527,7 +228,6 @@ async function main() {
   console.log(`Report written: ${paths.latestPath}`);
   console.log(`Dated report: ${paths.datedPath}`);
   if (paths.outPath) console.log(`Custom report: ${paths.outPath}`);
-  if (warnings.length) console.log(`Warnings: ${warnings.length}`);
 }
 
 main().catch((error) => {

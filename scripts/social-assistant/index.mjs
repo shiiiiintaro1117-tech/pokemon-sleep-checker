@@ -15,12 +15,29 @@ const DEFAULT_CONFIG = {
   postIdeas: null,
 };
 
+// 現在のJST時刻から朝/昼/夜を自動判定
+// --slot morning/noon/evening で上書き可能
+function detectSlot(override) {
+  if (override) return override;
+  const hour = Number(
+    new Date().toLocaleString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      hour: "numeric",
+      hour12: false,
+    })
+  );
+  if (hour >= 5 && hour < 11) return "morning";
+  if (hour >= 11 && hour < 17) return "noon";
+  return "evening";
+}
+
 function parseArgs(argv) {
   const args = {
     configPath: null,
     outPath: null,
     discord: false,
     discordWebhookUrl: null,
+    slot: null, // morning / noon / evening
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -29,6 +46,7 @@ function parseArgs(argv) {
     else if (arg === "--out") args.outPath = argv[++index];
     else if (arg === "--discord") args.discord = true;
     else if (arg === "--discord-webhook-url") args.discordWebhookUrl = argv[++index];
+    else if (arg === "--slot") args.slot = argv[++index];
   }
 
   return args;
@@ -103,110 +121,72 @@ function makeOwnPostIdeas(siteUrl, config) {
   };
 }
 
-function renderOwnPostIdeas(ownPostIdeas) {
-  const sections = [
-    ["朝の投稿案", ownPostIdeas.morning],
-    ["昼の投稿案", ownPostIdeas.noon],
-    ["夜の投稿案", ownPostIdeas.evening],
-  ];
+const SLOT_LABELS = {
+  morning: "🌅 朝の投稿案",
+  noon: "☀️ 昼の投稿案",
+  evening: "🌙 夜の投稿案",
+};
 
-  return sections.flatMap(([title, ideas]) => [
-    `### ${title}`,
-    "",
-    ...ideas.map((idea, index) => `${index + 1}. ${idea}`),
-    "",
-  ]);
-}
-
-function renderReport(config, generatedAt) {
-  const ownPostIdeas = makeOwnPostIdeas(config.siteUrl, config);
-
-  return [
-    "# SNS投稿案",
-    "",
-    `生成日時: ${generatedAt}`,
-    "",
-    ...renderOwnPostIdeas(ownPostIdeas),
-  ].join("\n");
-}
-
-async function writeReports(report, outPath) {
+async function writeReports(ideas, slot, outPath) {
   const reportDir = path.resolve(ROOT_DIR, "reports/social-assistant");
   await mkdir(reportDir, { recursive: true });
 
+  const generatedAt = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+  const content = [
+    `# SNS投稿案（${SLOT_LABELS[slot]}）`,
+    `生成日時: ${generatedAt}`,
+    "",
+    ...ideas.map((idea, i) => `## 案${i + 1}\n${idea}`),
+  ].join("\n\n");
+
   const date = new Date().toISOString().slice(0, 10);
   const latestPath = path.resolve(reportDir, "latest.md");
-  const datedPath = path.resolve(reportDir, `${date}.md`);
+  const datedPath = path.resolve(reportDir, `${date}-${slot}.md`);
   const resolvedOutPath = outPath ? path.resolve(ROOT_DIR, outPath) : null;
 
-  await writeFile(latestPath, report, "utf8");
-  await writeFile(datedPath, report, "utf8");
+  await writeFile(latestPath, content, "utf8");
+  await writeFile(datedPath, content, "utf8");
   if (resolvedOutPath) {
     await mkdir(path.dirname(resolvedOutPath), { recursive: true });
-    await writeFile(resolvedOutPath, report, "utf8");
+    await writeFile(resolvedOutPath, content, "utf8");
   }
 
   return { latestPath, datedPath, outPath: resolvedOutPath };
 }
 
-function splitDiscordContent(report) {
-  const maxLength = 1850;
-  const lines = report.split("\n");
-  const chunks = [];
-  let current = "";
+async function sendDiscordMessage(content, config, webhookUrl) {
+  const response = await fetch(`${webhookUrl}?wait=true`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "user-agent": "pokemon-sleep-checker-social-assistant/1.0",
+    },
+    body: JSON.stringify({
+      username: config.discord.username,
+      content,
+      allowed_mentions: { parse: [] },
+    }),
+  });
 
-  for (const line of lines) {
-    const next = current ? `${current}\n${line}` : line;
-    if (next.length <= maxLength) {
-      current = next;
-      continue;
-    }
-
-    if (current) chunks.push(current);
-
-    if (line.length <= maxLength) {
-      current = line;
-      continue;
-    }
-
-    for (let index = 0; index < line.length; index += maxLength) {
-      chunks.push(line.slice(index, index + maxLength));
-    }
-    current = "";
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Discord投稿失敗: ${response.status} ${response.statusText} ${body.slice(0, 160)}`);
   }
-
-  if (current) chunks.push(current);
-  return chunks;
 }
 
-async function sendDiscordReport(report, config, webhookUrl) {
+async function sendDiscordIdeas(ideas, slot, config, webhookUrl) {
   if (!webhookUrl) {
     throw new Error("DISCORD_WEBHOOK_URL が未設定です。");
   }
 
-  const chunks = splitDiscordContent(report);
-  for (let index = 0; index < chunks.length; index += 1) {
-    const suffix = chunks.length > 1 ? `\n\n_${index + 1}/${chunks.length}_` : "";
-    const response = await fetch(`${webhookUrl}?wait=true`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "user-agent": "pokemon-sleep-checker-social-assistant/1.0",
-      },
-      body: JSON.stringify({
-        username: config.discord.username,
-        content: `${chunks[index]}${suffix}`,
-        allowed_mentions: { parse: [] },
-      }),
-    });
-
-    if (!response.ok) {
-      const body = await response.text().catch(() => "");
-      throw new Error(`Discord投稿失敗: ${response.status} ${response.statusText} ${body.slice(0, 160)}`);
-    }
+  // ヘッダーを1通目に添える
+  const label = SLOT_LABELS[slot];
+  for (let i = 0; i < ideas.length; i += 1) {
+    const prefix = i === 0 ? `**${label}**\n\n` : "";
+    await sendDiscordMessage(`${prefix}${ideas[i]}`, config, webhookUrl);
   }
 
-  return chunks.length;
+  return ideas.length;
 }
 
 async function main() {
@@ -214,17 +194,19 @@ async function main() {
 
   const args = parseArgs(process.argv.slice(2));
   const config = await loadConfig(args.configPath);
+  const slot = detectSlot(args.slot);
+  const postIdeas = makeOwnPostIdeas(config.siteUrl, config);
+  const ideas = postIdeas[slot] ?? [];
 
-  const generatedAt = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-  const report = renderReport(config, generatedAt);
-  const paths = await writeReports(report, args.outPath);
+  const paths = await writeReports(ideas, slot, args.outPath);
   const discordWebhookUrl = args.discordWebhookUrl ?? process.env.DISCORD_WEBHOOK_URL;
 
   if (args.discord) {
-    const count = await sendDiscordReport(report, config, discordWebhookUrl);
+    const count = await sendDiscordIdeas(ideas, slot, config, discordWebhookUrl);
     console.log(`Discord messages sent: ${count}`);
   }
 
+  console.log(`Slot: ${slot}`);
   console.log(`Report written: ${paths.latestPath}`);
   console.log(`Dated report: ${paths.datedPath}`);
   if (paths.outPath) console.log(`Custom report: ${paths.outPath}`);

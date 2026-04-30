@@ -179,14 +179,14 @@ async function sendDiscordIdeas(ideas, slot, config, webhookUrl) {
     throw new Error("DISCORD_WEBHOOK_URL が未設定です。");
   }
 
-  // ヘッダーを1通目に添える
+  // ラベルを単独で送ってから、各案を1通ずつ送る
   const label = SLOT_LABELS[slot];
-  for (let i = 0; i < ideas.length; i += 1) {
-    const prefix = i === 0 ? `**${label}**\n\n` : "";
-    await sendDiscordMessage(`${prefix}${ideas[i]}`, config, webhookUrl);
+  await sendDiscordMessage(`**${label}**`, config, webhookUrl);
+  for (const idea of ideas) {
+    await sendDiscordMessage(idea, config, webhookUrl);
   }
 
-  return ideas.length;
+  return 1 + ideas.length; // ラベル1通 + 案3通
 }
 
 async function main() {

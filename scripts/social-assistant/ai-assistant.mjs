@@ -37,7 +37,7 @@ async function loadLocalEnv() {
     if (sep === -1) continue;
     const key = trimmed.slice(0, sep).trim();
     let value = trimmed.slice(sep + 1).trim();
-    if (!key || process.env[key] !== undefined) continue;
+    if (!key || (process.env[key] !== undefined && process.env[key] !== "")) continue;
     if ((value.startsWith('"') && value.endsWith('"')) ||
         (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);

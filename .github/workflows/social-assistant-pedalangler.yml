@@ -1,11 +1,8 @@
 name: Social Assistant Report (pedalangler)
 
 on:
-  schedule:
-    # UTC時間で指定（日本時間 = UTC+9）
-    - cron: "0 22 * * *"  # 日本時間 07:00
-    - cron: "0 3 * * *"   # 日本時間 12:00
-    - cron: "0 12 * * *"  # 日本時間 21:00
+  # 旧スクリプト。AI版 (ai-social-assistant-pedalangler.yml) に移行済み。
+  # 手動実行のみ残す
   workflow_dispatch:
 
 jobs:
